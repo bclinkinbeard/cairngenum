@@ -1,0 +1,172 @@
+<project name="cairngenum 1.0" default="main">
+	
+	<!-- load project configuration properties -->
+	<property file="project.properties" />
+	
+	<!-- load cairngenum configuration properties -->
+	<property file="config/cairngenum.properties" />
+	
+	<!-- load logging configuration properties -->
+	<property file="config/log.properties" />
+		
+	<!-- default cairngenum target, generates cairgorm project structure and default classes -->
+	<target name="main" depends="log, clean, create" />
+
+	<!-- logging target, writes build output to log file, log.txt -->
+	<target name="log">
+		<record name="${log.file.name}.txt" action="start" append="${log.append.to.file}" />
+	</target>
+			
+	<!-- delete previously created directories and create default cairngorm directories -->
+	<target name="clean" depends="log, delete-cairngorm-directories, create-cairngorm-directories" />
+
+	<!-- create required cairngorm classes -->
+	<target name="create" depends="log, create-application, create-model-locator, create-front-controller, create-service-locator" />
+	
+	<!-- delete previously generated cairngorm directories -->
+	<target name="delete-cairngorm-directories">
+		<echo>${log.delete.cairngorm.directories.message}</echo>
+		<delete dir="${project-uri}/${business.dir}" />
+		<delete dir="${project-uri}/${commands.dir}" />	 
+		<delete dir="${project-uri}/${control.dir}" />
+		<delete dir="${project-uri}/${events.dir}" />
+		<delete dir="${project-uri}/${model.dir}" />
+		<delete dir="${project-uri}/${view.dir}" />
+		<delete dir="${project-uri}/${vo.dir}" />
+	</target>
+	
+	<!-- create default cairngorm project directories -->
+	<target name="create-cairngorm-directories">
+		<echo>${log.create.cairngorm.directories.message}</echo>
+		<mkdir dir="${project-uri}/${business.dir}" />
+		<mkdir dir="${project-uri}/${commands.dir}" />	
+		<mkdir dir="${project-uri}/${control.dir}" />
+		<mkdir dir="${project-uri}/${events.dir}" />
+		<mkdir dir="${project-uri}/${model.dir}" />
+		<mkdir dir="${project-uri}/${view.dir}" /> 
+		<mkdir dir="${project-uri}/${vo.dir}" />
+	</target>
+	
+	<!-- create default cairngorm project Application with instantiated controller and service locator -->
+	<target name="create-application">
+		<echo>${log.application.message}</echo>
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/Application.tpl" tofile="${root.dir}/${project.name}.mxml" overwrite="true">
+			<filterchain>
+			   <replacetokens>
+					<token key="namespace" value="${namespace}" />
+					<token key="business" value="${business.dir}" />
+					<token key="control" value="${control.dir}" />
+					<token key="projectname" value="${project.name}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+
+	<!-- create default cairngorm project ModelLocator -->
+	<target name="create-model-locator">
+		<echo>${log.model.locator.message}</echo>
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/ModelLocator.tpl" tofile="${project-uri}/${model.dir}/${project.name}Model.as" overwrite="${overwrite.existing.files}">
+			<filterchain>
+			   <replacetokens>
+					<token key="projectname" value="${project.name}" />
+					<token key="namespace" value="${namespace}" />
+					<token key="model" value="${model.dir}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+	
+	<!-- create default cairngorm project FrontController -->
+	<target name="create-front-controller">
+		<echo>${log.front.controller.message}</echo>
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/FrontController.tpl" tofile="${project-uri}/${control.dir}/${project.name}Controller.as" overwrite="${overwrite.existing.files}">
+			<filterchain>
+			   <replacetokens>
+					<token key="projectname" value="${project.name}" />
+					<token key="namespace" value="${namespace}" />
+					<token key="control" value="${control.dir}" />
+					<token key="events" value="${events.dir}" />
+					<token key="commands" value="${commands.dir}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+	
+	<!-- create UM cairngorm project ServiceLocator -->
+	<target name="create-service-locator">
+		<echo>${log.service.locator.message}</echo>
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/Services.tpl" tofile="${project-uri}/${business.dir}/Services.mxml" overwrite="${overwrite.existing.files}">
+			<filterchain>
+				<replacetokens>
+					<token key="namespace" value="${namespace}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+	
+	<!-- create UM cairngorm project Delegate -->
+	<target name="create-delegate">
+		<input message="Delegate class stub name (enter 'SomeBus' to create SomeBusDelegate): " addproperty="del" />
+		<echo>${log.message} ${log.generating.message} ${del}Delegate.as</echo>
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/Delegate.tpl" tofile="${project-uri}/${business.dir}/${del}Delegate.as" overwrite="${overwrite.existing.files}">
+			<filterchain>
+			   <replacetokens>
+					<token key="namespace" value="${namespace}" />
+					<token key="business" value="${business.dir}" />
+					<token key="sequence" value="${del}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+	
+	<!-- create cairngenum sequence, generates: Command and Event and adds mapping to controller -->
+	<target name="create-sequence" depends="log">
+		<input message="Sequence stub name (TestSequence generates TestSequenceEvent and TestSequenceCommand): " addproperty="seq" />
+		<input message="Event type constant name (TEST_SEQUENCE_EVENT): " addproperty="evt_type_const" />
+		<input message="Event type constant value (testSequenceEvent): " addproperty="evt_type_value" />
+		<input message="Delegate class (SomeBusDelegate): " addproperty="del" />
+		<echo>${log.message} ${log.generating.message} ${seq}Command.as and ${seq}Event.as, using ${del}.as</echo>
+		<antcall target="internal-create-custom-event-class" />
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/Command.tpl" tofile="${project-uri}/${commands.dir}/${seq}Command.as" overwrite="${overwrite.existing.files}">
+			<filterchain>
+			   <replacetokens>
+					<token key="sequence" value="${seq}" />
+					<token key="namespace" value="${namespace}" />
+					<token key="events" value="${events.dir}" />
+					<token key="commands" value="${commands.dir}" />
+					<token key="business" value="${business.dir}" />
+					<token key="delegate" value="${del}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+		<antcall target="internal-register-sequence" />
+	</target>
+	
+	<!-- ************************************************************************** -->
+	<!-- Internal targets not intended to be directly run. Called by other targets. -->
+	<!-- ************************************************************************** -->
+	<target name="internal-create-custom-event-class">
+		<copy file="${cairngorm.templates.dir}/${cairngorm.framework.name}${cairngorm.version}/Event.tpl" tofile="${project-uri}/${events.dir}/${seq}Event.as" overwrite="${overwrite.existing.files}">
+			<filterchain>
+			   <replacetokens>
+					<token key="sequence" value="${seq}" />
+					<token key="namespace" value="${namespace}" />
+					<token key="events" value="${events.dir}" />
+					<token key="event_type_const" value="${evt_type_const}" />
+					<token key="event_type_value" value="${evt_type_value}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+	
+	<!-- TO MAINTAIN CORRECT FORMATTING IN OUTPUT DO NOT MODIFY SPACING/TABS BELOW -->
+	<target name="internal-register-sequence">
+		<replace file="${project-uri}/${control.dir}/${project.name}Controller.as"
+			token="//@event_import_token@"
+			value="import ${namespace}.${events.dir}.${seq}Event;${line.separator}    //@event_import_token@" />
+		<replace file="${project-uri}/${control.dir}/${project.name}Controller.as"
+			token="//@add_command_custom_event_token@"
+			value="addCommand( ${seq}Event.${evt_type_const}, ${seq}Command );${line.separator}            //@add_command_custom_event_token@" />
+		<fixcrlf srcdir="${project-uri}/${control.dir}" tab="add" tablength="4" />
+	</target>
+</project>
